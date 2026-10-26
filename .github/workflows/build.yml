@@ -1,0 +1,42 @@
+name: Firmware Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ARM toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-arm-none-eabi binutils-arm-none-eabi \
+            libnewlib-arm-none-eabi
+
+      - name: Cache STM32CubeF1 dependencies
+        uses: actions/cache@v4
+        with:
+          path: external/STM32CubeF1
+          key: stm32cubef1-${{ runner.os }}
+
+      - name: Fetch ST dependencies
+        run: bash scripts/get_dependencies.sh
+
+      - name: Build firmware
+        run: make -j"$(nproc)"
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stm32f103c8-firmware-${{ github.sha }}
+          path: |
+            build/stm32f103c8.elf
+            build/stm32f103c8.hex
+            build/stm32f103c8.bin
+          if-no-files-found: error

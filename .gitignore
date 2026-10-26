@@ -1,0 +1,5 @@
+/build/
+/external/STM32CubeF1/
+.vscode/.browse.VC.db
+.vscode/ipch/
+*.log
