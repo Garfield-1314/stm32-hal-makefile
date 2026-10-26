@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install ARM toolchain
         run: |
@@ -20,7 +20,7 @@ jobs:
             libnewlib-arm-none-eabi
 
       - name: Cache STM32CubeF1 dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             external/STM32CubeF1
@@ -36,7 +36,7 @@ jobs:
         run: make -j"$(nproc)"
 
       - name: Upload firmware artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: stm32f103c8-firmware-${{ github.sha }}
           path: |

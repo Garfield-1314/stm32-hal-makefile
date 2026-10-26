@@ -63,6 +63,13 @@
 #define INCLUDE_xTaskGetHandle                  0
 #define INCLUDE_xTaskResumeFromISR              0
 
+/* Assert hook: disable interrupts and spin for debugger inspection.
+ * Required to enable the kernel's internal sanity checks (handler
+ * installation, interrupt priority validation, heap integrity) and also
+ * resolves the unused pxVectorTable warning in the CM3 port. */
+void vAssertCalled(const char *file, int line);
+#define configASSERT( x )   if( ( x ) == 0 ) vAssertCalled( __FILE__, __LINE__ )
+
 /* Cortex-M3 NVIC configuration.
  * HAL's SysTick priority (TICK_INT_PRIORITY = 15) must be at or below
  * configMAX_SYSCALL_INTERRUPT_PRIORITY so FreeRTOS API is safe to call

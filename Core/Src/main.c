@@ -105,6 +105,17 @@ void vApplicationMallocFailedHook(void)
     Error_Handler();
 }
 
+void vAssertCalled(const char *file, int line)
+{
+    (void)file;
+    (void)line;
+    __disable_irq();
+    for (;;)
+    {
+        /* Break here in a debugger to inspect file/line. */
+    }
+}
+
 void Error_Handler(void)
 {
     __disable_irq();
