@@ -7,6 +7,8 @@ CUBE_DIR    := external/STM32CubeF1
 HAL_DIR     := $(CUBE_DIR)/Drivers/STM32F1xx_HAL_Driver
 CMSIS_DIR   := $(CUBE_DIR)/Drivers/CMSIS
 DEVICE_DIR  := $(CMSIS_DIR)/Device/ST/STM32F1xx
+FREERTOS_DIR := external/FreeRTOS-Kernel
+FREERTOS_PORT_DIR := $(FREERTOS_DIR)/portable/GCC/ARM_CM3
 LDSCRIPT    := linker/STM32F103C8Tx_FLASH.ld
 
 CC       := arm-none-eabi-gcc
@@ -20,7 +22,9 @@ C_INCLUDES := -ICore/Inc \
               -I$(HAL_DIR)/Inc \
               -I$(HAL_DIR)/Inc/Legacy \
               -I$(DEVICE_DIR)/Include \
-              -I$(CMSIS_DIR)/Include
+              -I$(CMSIS_DIR)/Include \
+              -I$(FREERTOS_DIR)/include \
+              -I$(FREERTOS_PORT_DIR)
 
 OPT ?= -Og
 CFLAGS := $(CPU) $(C_DEFS) $(C_INCLUDES) $(OPT) -g3 -std=gnu11 \
@@ -41,10 +45,20 @@ HAL_SOURCES := \
     $(HAL_DIR)/Src/stm32f1xx_hal_flash_ex.c \
     $(HAL_DIR)/Src/stm32f1xx_hal_pwr.c
 
+FREERTOS_SOURCES := \
+    $(FREERTOS_DIR)/tasks.c \
+    $(FREERTOS_DIR)/queue.c \
+    $(FREERTOS_DIR)/list.c \
+    $(FREERTOS_DIR)/event_groups.c \
+    $(FREERTOS_DIR)/timers.c \
+    $(FREERTOS_DIR)/portable/MemMang/heap_4.c \
+    $(FREERTOS_PORT_DIR)/port.c
+
 C_SOURCES := \
     Core/Src/main.c \
     $(DEVICE_DIR)/Source/Templates/system_stm32f1xx.c \
-    $(HAL_SOURCES)
+    $(HAL_SOURCES) \
+    $(FREERTOS_SOURCES)
 
 ASM_SOURCES := $(DEVICE_DIR)/Source/Templates/gcc/startup_stm32f103xb.s
 OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(C_SOURCES)) \
@@ -65,8 +79,8 @@ build: check-deps
 _build: $(ELF) $(HEX) $(BIN)
 
 check-deps:
-	@test -f "$(HAL_DIR)/Inc/stm32f1xx_hal.h" -a -f "$(DEVICE_DIR)/Include/stm32f1xx.h" || { \
-		echo "STM32 dependencies are missing. Run: make deps"; exit 1; }
+	@test -f "$(HAL_DIR)/Inc/stm32f1xx_hal.h" -a -f "$(DEVICE_DIR)/Include/stm32f1xx.h" -a -f "$(FREERTOS_DIR)/include/FreeRTOS.h" || { \
+		echo "Dependencies are missing. Run: make deps"; exit 1; }
 	@command -v $(CC) >/dev/null 2>&1 || { echo "Missing $(CC). Install gcc-arm-none-eabi."; exit 1; }
 
 $(ELF): $(OBJECTS) $(LDSCRIPT)
@@ -91,6 +105,7 @@ $(BUILD_DIR)/%.o: %.s
 
 deps:
 	./scripts/get_dependencies.sh
+	./scripts/get_freertos.sh
 
 clean:
 	rm -rf $(BUILD_DIR)

@@ -22,11 +22,15 @@ jobs:
       - name: Cache STM32CubeF1 dependencies
         uses: actions/cache@v4
         with:
-          path: external/STM32CubeF1
-          key: stm32cubef1-${{ runner.os }}
+          path: |
+            external/STM32CubeF1
+            external/FreeRTOS-Kernel
+          key: deps-${{ runner.os }}-stm32cubef1-freertos
 
-      - name: Fetch ST dependencies
-        run: bash scripts/get_dependencies.sh
+      - name: Fetch dependencies (STM32CubeF1 + FreeRTOS)
+        run: |
+          bash scripts/get_dependencies.sh
+          bash scripts/get_freertos.sh
 
       - name: Build firmware
         run: make -j"$(nproc)"

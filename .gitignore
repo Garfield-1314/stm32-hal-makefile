@@ -1,5 +1,6 @@
 /build/
 /external/STM32CubeF1/
+/external/FreeRTOS-Kernel/
 .vscode/.browse.VC.db
 .vscode/ipch/
 *.log

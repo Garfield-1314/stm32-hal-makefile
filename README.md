@@ -5,11 +5,11 @@
 ## 内置内容
 
 - 基于 HSI 的 64 MHz 时钟配置(无需外部晶振)。
-- PC13 LED 闪烁示例,适用于大多数 LED 低电平点亮的 Blue Pill 开发板。
+- **FreeRTOS(V11)双任务示例**:LED 闪烁任务 + 心跳计数任务,演示抢占与共享状态。
 - 手写的 Makefile,生成 ELF、HEX 和 BIN 产物。
 - 面向 64 KB Flash / 20 KB RAM 的 GNU 链接脚本。
 - VS Code 构建任务、C/C++ IntelliSense 及 Cortex-Debug/OpenOCD 调试配置。
-- 依赖脚本:仅从 ST 官方 STM32CubeF1 仓库拉取所需的 CMSIS 设备和 HAL 子模块。
+- 依赖脚本:仅从 ST 官方 STM32CubeF1 仓库拉取所需的 CMSIS 设备和 HAL 子模块,从 FreeRTOS 官方仓库拉取内核。
 - GitHub Actions CI:PR 及合并到 main 时自动构建固件并上传产物(见 `.github/workflows/build.yml`)。
 
 ## 1. 在 WSL Ubuntu 中安装工具
@@ -42,6 +42,8 @@ make deps
 CMSIS 核心头文件由父仓库直接提供。此步骤需要能够访问 GitHub。ST 源码不随本工程分发,而是从官方仓库拉取,以保持工程体积小巧并保留上游的许可与版本信息。
 
 官方源地址:https://github.com/STMicroelectronics/STM32CubeF1
+
+`make deps` 还会调用 `scripts/get_freertos.sh`,浅克隆官方 FreeRTOS 内核仓库(`FreeRTOS/FreeRTOS-Kernel`)到 `external/FreeRTOS-Kernel`。两个目录均已被 `.gitignore` 忽略。
 
 ## 3. 构建
 
@@ -97,11 +99,13 @@ make debug-server
 .
 ├── Core/Inc/main.h
 ├── Core/Inc/stm32f1xx_hal_conf.h
+├── Core/Inc/FreeRTOSConfig.h
 ├── Core/Src/main.c
 ├── BSP/README.md
 ├── App/README.md
 ├── linker/STM32F103C8Tx_FLASH.ld
 ├── scripts/get_dependencies.sh
+├── scripts/get_freertos.sh
 ├── .github/workflows/build.yml   # CI:PR / push 自动构建
 ├── .vscode/
 │   ├── c_cpp_properties.json
@@ -111,6 +115,26 @@ make debug-server
 ├── Makefile
 └── external/README.md
 ```
+
+## FreeRTOS
+
+内核版本由 `external/FreeRTOS-Kernel` 浅克隆决定(当前为 V11.x),`GCC/ARM_CM3` 移植层直接适用 Cortex-M3。
+
+**关键配置**(`Core/Inc/FreeRTOSConfig.h`):
+
+- `configCPU_CLOCK_HZ = 64 MHz`、`configTICK_RATE_HZ = 1 kHz`
+- `configTOTAL_HEAP_SIZE = 10 KB`(20 KB RAM,堆 + 两个任务栈约 12 KB)
+- `configCHECK_FOR_STACK_OVERFLOW = 2`、`configUSE_MALLOC_FAILED_HOOK = 1`:栈溢出/分配失败时进入 `Error_Handler`
+- 中断优先级:`configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY = 5`,HAL 的 SysTick 优先级(`TICK_INT_PRIORITY = 15`)在安全区内,可在 tick 钩子中调用 HAL API
+- `vPortSVCHandler` / `xPortPendSVHandler` / `xPortSysTickHandler` 通过宏映射到启动文件使用的 CMSIS 名字(`SVC_Handler` / `PendSV_Handler` / `SysTick_Handler`),无需在 `main.c` 重复定义;HAL 时基改由 `vApplicationTickHook()` 中的 `HAL_IncTick()` 维护
+
+**应用结构**(`Core/Src/main.c`):
+
+- `led_task`(优先级 1):每 500 ms 翻转 PC13
+- `heartbeat_task`(优先级 2):每秒自增 `heartbeat_count`(演示优先级抢占与共享 volatile 变量)
+- `main()`:HAL 初始化 → 时钟配置 → GPIO 初始化 → 创建任务 → `vTaskStartScheduler()`
+
+**新增外设时**:在 `FreeRTOSConfig.h` 中按需开启相关宏(如 `configUSE_TIMERS` 已启用),任务间同步用 `queue`/`semaphore`/`mutex`(内核源文件已在 Makefile 的 `FREERTOS_SOURCES` 中,无需改动)。
 
 ## 持续集成(CI)
 
