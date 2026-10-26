@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "WSL-STM32F103C8T6",
+            "includePath": [
+                "${workspaceFolder}/Core/Inc",
+                "${workspaceFolder}/external/STM32CubeF1/Drivers/STM32F1xx_HAL_Driver/Inc",
+                "${workspaceFolder}/external/STM32CubeF1/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy",
+                "${workspaceFolder}/external/STM32CubeF1/Drivers/CMSIS/Device/ST/STM32F1xx/Include",
+                "${workspaceFolder}/external/STM32CubeF1/Drivers/CMSIS/Include"
+            ],
+            "defines": [
+                "STM32F103xB",
+                "USE_HAL_DRIVER"
+            ],
+            "compilerPath": "/usr/bin/arm-none-eabi-gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-arm"
+        }
+    ],
+    "version": 4
+}
