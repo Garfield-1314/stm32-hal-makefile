@@ -14,8 +14,12 @@ jobs:
 
       - name: Install ARM toolchain
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          # Bound apt network waits and retry: GitHub runners occasionally
+          # stall on the Ubuntu mirrors, which previously hung the job.
+          APT_OPTS="-o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 \
+                    -o Acquire::Retries=3 -o DPkg::Lock::Timeout=60"
+          sudo apt-get $APT_OPTS update
+          sudo apt-get $APT_OPTS install -y --no-install-recommends \
             gcc-arm-none-eabi binutils-arm-none-eabi \
             libnewlib-arm-none-eabi
 
