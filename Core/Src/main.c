@@ -1,20 +1,10 @@
 #include "main.h"
+#include "led.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
-/* LED task: toggles the PC13 LED every 500 ms. */
-static void led_task(void *argument)
-{
-    (void)argument;
-    for (;;)
-    {
-        HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-        vTaskDelay(pdMS_TO_TICKS(500U));
-    }
-}
-
 /* Heartbeat task: higher priority, increments a counter every second.
- * Demonstrates preemption of led_task and shared (volatile) state. */
+ * Demonstrates preemption and shared (volatile) state. */
 static volatile uint32_t heartbeat_count;
 
 static void heartbeat_task(void *argument)
@@ -32,19 +22,9 @@ int main(void)
     HAL_Init();
     SystemClock_Config();
 
-    __HAL_RCC_GPIOC_CLK_ENABLE();
+    LED_Init();
+    LED_Start();
 
-    GPIO_InitTypeDef gpio = {0};
-    gpio.Pin = LED_Pin;
-    gpio.Mode = GPIO_MODE_OUTPUT_PP;
-    gpio.Pull = GPIO_NOPULL;
-    gpio.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(LED_GPIO_Port, &gpio);
-
-    /* Many Blue Pill boards wire the PC13 LED active-low. */
-    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-
-    xTaskCreate(led_task, "led", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
     xTaskCreate(heartbeat_task, "beat", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
 
     vTaskStartScheduler();

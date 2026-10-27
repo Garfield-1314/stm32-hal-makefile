@@ -7,9 +7,6 @@ extern "C" {
 
 #include "stm32f1xx_hal.h"
 
-#define LED_GPIO_Port GPIOC
-#define LED_Pin       GPIO_PIN_13
-
 void SystemClock_Config(void);
 void Error_Handler(void);
 

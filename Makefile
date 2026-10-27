@@ -19,6 +19,7 @@ OPENOCD  := openocd
 CPU       := -mcpu=cortex-m3 -mthumb
 C_DEFS    := -DSTM32F103xB -DUSE_HAL_DRIVER
 C_INCLUDES := -ICore/Inc \
+              -Iexample/led \
               -I$(HAL_DIR)/Inc \
               -I$(HAL_DIR)/Inc/Legacy \
               -I$(DEVICE_DIR)/Include \
@@ -56,6 +57,7 @@ FREERTOS_SOURCES := \
 
 C_SOURCES := \
     Core/Src/main.c \
+    example/led/led.c \
     $(DEVICE_DIR)/Source/Templates/system_stm32f1xx.c \
     $(HAL_SOURCES) \
     $(FREERTOS_SOURCES)

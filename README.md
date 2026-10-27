@@ -91,7 +91,7 @@ make debug-server
 - 目标 MCU:STM32F103C8T6,Cortex-M3,中密度器件(`STM32F103xB`)。
 - 链接内存:64 KB Flash 位于 `0x08000000`,20 KB SRAM 位于 `0x20000000`。部分第三方芯片/开发板可能不同,修改前请先确认具体型号。
 - 系统时钟:HSI 8 MHz / 2 * 16 = 64 MHz。这样可以不依赖外部 HSE 晶振。HSI 精度低于晶振,若对 UART 波特率时序或时钟精度有严格要求,请改为匹配开发板 HSE 的时钟配置。
-- LED:PC13,大多数 Blue Pill 开发板为低电平点亮。其他开发板请修改 `Core/Inc/main.h` 中的 `LED_GPIO_Port` / `LED_Pin`。
+- LED:PC13,大多数 Blue Pill 开发板为低电平点亮。其他开发板请修改 `example/led/led.c` 中的 LED 引脚和有效电平。
 
 ## 工程结构
 
@@ -103,6 +103,12 @@ make debug-server
 ├── Core/Src/main.c
 ├── BSP/README.md
 ├── App/README.md
+├── example/                       # 外设与功能例程
+│   ├── README.md
+│   └── led/
+│       ├── README.md
+│       ├── led.c
+│       └── led.h
 ├── linker/STM32F103C8Tx_FLASH.ld
 ├── scripts/get_dependencies.sh
 ├── scripts/get_freertos.sh
@@ -128,11 +134,11 @@ make debug-server
 - 中断优先级:`configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY = 5`,HAL 的 SysTick 优先级(`TICK_INT_PRIORITY = 15`)在安全区内,可在 tick 钩子中调用 HAL API
 - `vPortSVCHandler` / `xPortPendSVHandler` / `xPortSysTickHandler` 通过宏映射到启动文件使用的 CMSIS 名字(`SVC_Handler` / `PendSV_Handler` / `SysTick_Handler`),无需在 `main.c` 重复定义;HAL 时基改由 `vApplicationTickHook()` 中的 `HAL_IncTick()` 维护
 
-**应用结构**(`Core/Src/main.c`):
+**应用结构**(`Core/Src/main.c` 与 `example/led/led.c`):
 
-- `led_task`(优先级 1):每 500 ms 翻转 PC13
+- `led_task`(优先级 1,位于 `example/led/led.c`):每 500 ms 翻转 PC13
 - `heartbeat_task`(优先级 2):每秒自增 `heartbeat_count`(演示优先级抢占与共享 volatile 变量)
-- `main()`:HAL 初始化 → 时钟配置 → GPIO 初始化 → 创建任务 → `vTaskStartScheduler()`
+- `main()`:HAL 初始化 → 时钟配置 → `LED_Init()` / `LED_Start()` → 创建心跳任务 → `vTaskStartScheduler()`
 
 **新增外设时**:在 `FreeRTOSConfig.h` 中按需开启相关宏(如 `configUSE_TIMERS` 已启用),任务间同步用 `queue`/`semaphore`/`mutex`(内核源文件已在 Makefile 的 `FREERTOS_SOURCES` 中,无需改动)。
 
