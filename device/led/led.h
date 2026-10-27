@@ -1,5 +1,5 @@
-#ifndef EXAMPLE_LED_H
-#define EXAMPLE_LED_H
+#ifndef DEVICE_LED_H
+#define DEVICE_LED_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,4 +12,4 @@ void LED_Start(void);
 }
 #endif
 
-#endif /* EXAMPLE_LED_H */
+#endif /* DEVICE_LED_H */

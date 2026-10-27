@@ -6,6 +6,7 @@
 
 - 基于 HSI 的 64 MHz 时钟配置(无需外部晶振)。
 - **FreeRTOS(V11)双任务示例**:LED 闪烁任务 + 心跳计数任务,演示抢占与共享状态。
+- **基础外设驱动**:IO、PWM、I2C、SPI 和 UART,统一封装在 `driver/`。
 - 手写的 Makefile,生成 ELF、HEX 和 BIN 产物。
 - 面向 64 KB Flash / 20 KB RAM 的 GNU 链接脚本。
 - VS Code 构建任务、C/C++ IntelliSense 及 Cortex-Debug/OpenOCD 调试配置。
@@ -91,7 +92,7 @@ make debug-server
 - 目标 MCU:STM32F103C8T6,Cortex-M3,中密度器件(`STM32F103xB`)。
 - 链接内存:64 KB Flash 位于 `0x08000000`,20 KB SRAM 位于 `0x20000000`。部分第三方芯片/开发板可能不同,修改前请先确认具体型号。
 - 系统时钟:HSI 8 MHz / 2 * 16 = 64 MHz。这样可以不依赖外部 HSE 晶振。HSI 精度低于晶振,若对 UART 波特率时序或时钟精度有严格要求,请改为匹配开发板 HSE 的时钟配置。
-- LED:PC13,大多数 Blue Pill 开发板为低电平点亮。其他开发板请修改 `example/led/led.c` 中的 LED 引脚和有效电平。
+- LED:PC13,大多数 Blue Pill 开发板为低电平点亮。其他开发板请修改 `device/led/led.c` 中的 LED 引脚和有效电平。
 
 ## 工程结构
 
@@ -101,14 +102,26 @@ make debug-server
 ├── Core/Inc/stm32f1xx_hal_conf.h
 ├── Core/Inc/FreeRTOSConfig.h
 ├── Core/Src/main.c
-├── BSP/README.md
-├── App/README.md
-├── example/                       # 外设与功能例程
+├── device/                         # 设备级模块
 │   ├── README.md
 │   └── led/
 │       ├── README.md
 │       ├── led.c
 │       └── led.h
+├── driver/                         # 可复用的基础外设驱动
+│   ├── README.md
+│   ├── inc/
+│   │   ├── driver_i2c.h
+│   │   ├── driver_io.h
+│   │   ├── driver_pwm.h
+│   │   ├── driver_spi.h
+│   │   └── driver_uart.h
+│   └── src/
+│       ├── driver_i2c.c
+│       ├── driver_io.c
+│       ├── driver_pwm.c
+│       ├── driver_spi.c
+│       └── driver_uart.c
 ├── linker/STM32F103C8Tx_FLASH.ld
 ├── scripts/get_dependencies.sh
 ├── scripts/get_freertos.sh
@@ -134,9 +147,9 @@ make debug-server
 - 中断优先级:`configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY = 5`,HAL 的 SysTick 优先级(`TICK_INT_PRIORITY = 15`)在安全区内,可在 tick 钩子中调用 HAL API
 - `vPortSVCHandler` / `xPortPendSVHandler` / `xPortSysTickHandler` 通过宏映射到启动文件使用的 CMSIS 名字(`SVC_Handler` / `PendSV_Handler` / `SysTick_Handler`),无需在 `main.c` 重复定义;HAL 时基改由 `vApplicationTickHook()` 中的 `HAL_IncTick()` 维护
 
-**应用结构**(`Core/Src/main.c` 与 `example/led/led.c`):
+**应用结构**(`Core/Src/main.c` 与 `device/led/led.c`):
 
-- `led_task`(优先级 1,位于 `example/led/led.c`):每 500 ms 翻转 PC13
+- `led_task`(优先级 1,位于 `device/led/led.c`):通过 `Driver_IO` 每 500 ms 翻转 PC13
 - `heartbeat_task`(优先级 2):每秒自增 `heartbeat_count`(演示优先级抢占与共享 volatile 变量)
 - `main()`:HAL 初始化 → 时钟配置 → `LED_Init()` / `LED_Start()` → 创建心跳任务 → `vTaskStartScheduler()`
 
@@ -153,6 +166,8 @@ make debug-server
 
 ## 添加 HAL 外设
 
-本起步工程只编译时钟、GPIO、Flash、电源和 Cortex-M 支持所需的 HAL 模块。添加外设时,需要将其对应的 `stm32f1xx_hal_<peripheral>.c` 加入 Makefile 的 `HAL_SOURCES`,并在 `Core/Inc/stm32f1xx_hal_conf.h` 中启用相应的模块宏。例如使用 UART 需要加入 HAL UART 源文件并定义 `HAL_UART_MODULE_ENABLED`。
+本起步工程已编译时钟、GPIO、I2C、SPI、TIM、UART、DMA、Flash、电源和 Cortex-M 支持所需的 HAL 模块。基础封装位于 `driver/`,接口和接线说明见 `driver/README.md`。
+
+添加其他外设时,需要将其对应的 `stm32f1xx_hal_<peripheral>.c` 加入 Makefile 的 `HAL_SOURCES`,并在 `Core/Inc/stm32f1xx_hal_conf.h` 中启用相应的模块宏。例如使用 ADC 需要加入 HAL ADC 源文件并定义 `HAL_ADC_MODULE_ENABLED`。
 
 本工程不需要任何 CubeMX 生成的文件。请将板级配置和应用逻辑放在你自己的文件中,保持工程完全由 Makefile 驱动。

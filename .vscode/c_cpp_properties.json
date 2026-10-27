@@ -4,6 +4,8 @@
             "name": "WSL-STM32F103C8T6",
             "includePath": [
                 "${workspaceFolder}/Core/Inc",
+                "${workspaceFolder}/driver/inc",
+                "${workspaceFolder}/device/led",
                 "${workspaceFolder}/external/STM32CubeF1/Drivers/STM32F1xx_HAL_Driver/Inc",
                 "${workspaceFolder}/external/STM32CubeF1/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy",
                 "${workspaceFolder}/external/STM32CubeF1/Drivers/CMSIS/Device/ST/STM32F1xx/Include",

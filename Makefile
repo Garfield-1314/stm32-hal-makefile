@@ -19,7 +19,8 @@ OPENOCD  := openocd
 CPU       := -mcpu=cortex-m3 -mthumb
 C_DEFS    := -DSTM32F103xB -DUSE_HAL_DRIVER
 C_INCLUDES := -ICore/Inc \
-              -Iexample/led \
+              -Idriver/inc \
+              -Idevice/led \
               -I$(HAL_DIR)/Inc \
               -I$(HAL_DIR)/Inc/Legacy \
               -I$(DEVICE_DIR)/Include \
@@ -39,9 +40,14 @@ LDFLAGS := $(CPU) -T$(LDSCRIPT) --specs=nano.specs --specs=nosys.specs \
 HAL_SOURCES := \
     $(HAL_DIR)/Src/stm32f1xx_hal.c \
     $(HAL_DIR)/Src/stm32f1xx_hal_cortex.c \
+    $(HAL_DIR)/Src/stm32f1xx_hal_dma.c \
     $(HAL_DIR)/Src/stm32f1xx_hal_gpio.c \
+    $(HAL_DIR)/Src/stm32f1xx_hal_i2c.c \
     $(HAL_DIR)/Src/stm32f1xx_hal_rcc.c \
     $(HAL_DIR)/Src/stm32f1xx_hal_rcc_ex.c \
+    $(HAL_DIR)/Src/stm32f1xx_hal_spi.c \
+    $(HAL_DIR)/Src/stm32f1xx_hal_tim.c \
+    $(HAL_DIR)/Src/stm32f1xx_hal_uart.c \
     $(HAL_DIR)/Src/stm32f1xx_hal_flash.c \
     $(HAL_DIR)/Src/stm32f1xx_hal_flash_ex.c \
     $(HAL_DIR)/Src/stm32f1xx_hal_pwr.c
@@ -57,7 +63,12 @@ FREERTOS_SOURCES := \
 
 C_SOURCES := \
     Core/Src/main.c \
-    example/led/led.c \
+    driver/src/driver_i2c.c \
+    driver/src/driver_io.c \
+    driver/src/driver_pwm.c \
+    driver/src/driver_spi.c \
+    driver/src/driver_uart.c \
+    device/led/led.c \
     $(DEVICE_DIR)/Source/Templates/system_stm32f1xx.c \
     $(HAL_SOURCES) \
     $(FREERTOS_SOURCES)
