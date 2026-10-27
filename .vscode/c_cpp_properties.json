@@ -9,7 +9,9 @@
                 "${workspaceFolder}/external/STM32CubeF1/Drivers/STM32F1xx_HAL_Driver/Inc",
                 "${workspaceFolder}/external/STM32CubeF1/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy",
                 "${workspaceFolder}/external/STM32CubeF1/Drivers/CMSIS/Device/ST/STM32F1xx/Include",
-                "${workspaceFolder}/external/STM32CubeF1/Drivers/CMSIS/Include"
+                "${workspaceFolder}/external/STM32CubeF1/Drivers/CMSIS/Include",
+                "${workspaceFolder}/external/FreeRTOS-Kernel/include",
+                "${workspaceFolder}/external/FreeRTOS-Kernel/portable/GCC/ARM_CM3"
             ],
             "defines": [
                 "STM32F103xB",
