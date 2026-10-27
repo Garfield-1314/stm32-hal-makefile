@@ -11,7 +11,11 @@ typedef enum
 {
     DRIVER_IO_MODE_INPUT = 0,
     DRIVER_IO_MODE_OUTPUT_PP,
-    DRIVER_IO_MODE_OUTPUT_OD
+    DRIVER_IO_MODE_OUTPUT_OD,
+    /* Alternate-function push-pull (e.g. UART TX). F1 GPIO does not bind
+     * the alternate function to a peripheral here; pin mapping (AFIO)
+     * selects which peripheral drives the pin. */
+    DRIVER_IO_MODE_AF_PP
 } Driver_IO_Mode;
 
 typedef struct

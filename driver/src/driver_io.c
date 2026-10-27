@@ -59,6 +59,9 @@ HAL_StatusTypeDef Driver_IO_Init(Driver_IO *io,
     case DRIVER_IO_MODE_OUTPUT_OD:
         gpio.Mode = GPIO_MODE_OUTPUT_OD;
         break;
+    case DRIVER_IO_MODE_AF_PP:
+        gpio.Mode = GPIO_MODE_AF_PP;
+        break;
     default:
         return HAL_ERROR;
     }

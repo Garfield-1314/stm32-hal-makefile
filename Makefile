@@ -21,6 +21,7 @@ C_DEFS    := -DSTM32F103xB -DUSE_HAL_DRIVER
 C_INCLUDES := -ICore/Inc \
               -Idriver/inc \
               -Idevice/led \
+              -Idevice/debug_uart \
               -I$(HAL_DIR)/Inc \
               -I$(HAL_DIR)/Inc/Legacy \
               -I$(DEVICE_DIR)/Include \
@@ -69,6 +70,7 @@ C_SOURCES := \
     driver/src/driver_spi.c \
     driver/src/driver_uart.c \
     device/led/led.c \
+    device/debug_uart/debug_uart.c \
     $(DEVICE_DIR)/Source/Templates/system_stm32f1xx.c \
     $(HAL_SOURCES) \
     $(FREERTOS_SOURCES)

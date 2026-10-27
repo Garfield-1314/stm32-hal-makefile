@@ -1,10 +1,12 @@
 #include "main.h"
 #include "led.h"
+#include "debug_uart.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
-/* Heartbeat task: higher priority, increments a counter every second.
- * Demonstrates preemption and shared (volatile) state. */
+/* Heartbeat task: higher priority, increments a counter every second and
+ * logs it on the debug UART. Also echoes received bytes so the DMA RX path
+ * can be exercised from a serial terminal. */
 static volatile uint32_t heartbeat_count;
 
 static void heartbeat_task(void *argument)
@@ -13,6 +15,16 @@ static void heartbeat_task(void *argument)
     for (;;)
     {
         heartbeat_count++;
+        (void)DebugUart_Printf("heartbeat: %lu\n",
+                               (unsigned long)heartbeat_count);
+
+        uint8_t echo[16];
+        uint16_t received = DebugUart_Read(echo, sizeof(echo), 100U);
+        if (received > 0U)
+        {
+            (void)DebugUart_Write(echo, received);
+        }
+
         vTaskDelay(pdMS_TO_TICKS(1000U));
     }
 }
@@ -23,9 +35,14 @@ int main(void)
     SystemClock_Config();
 
     LED_Init();
+    DebugUart_Init();
     LED_Start();
 
-    xTaskCreate(heartbeat_task, "beat", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+    (void)DebugUart_Printf("debug console up\n");
+
+    /* 256 words (1 KB): newlib-nano vsnprintf needs more than the minimal
+     * stack, see device/debug_uart/README.md. */
+    xTaskCreate(heartbeat_task, "beat", 256, NULL, 2, NULL);
 
     vTaskStartScheduler();
 

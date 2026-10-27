@@ -5,8 +5,9 @@
 ## 内置内容
 
 - 基于 HSI 的 64 MHz 时钟配置(无需外部晶振)。
-- **FreeRTOS(V11)双任务示例**:LED 闪烁任务 + 心跳计数任务,演示抢占与共享状态。
-- **基础外设驱动**:IO、PWM、I2C、SPI 和 UART,统一封装在 `driver/`。
+- **FreeRTOS(V11)双任务示例**:LED 闪烁任务 + 心跳/回显任务,演示抢占与共享状态。
+- **DMA 调试串口**:`device/debug_uart/`,USART1(PA9/PA10,115200 8N1),TX 走非阻塞环形缓冲 + DMA,`printf` 重定向即用;RX 走 DMA 循环缓冲 + 空闲中断定界,提供阻塞读接口。
+- **基础外设驱动**:IO、PWM、I2C、SPI 和 UART(可选 DMA),统一封装在 `driver/`。
 - 手写的 Makefile,生成 ELF、HEX 和 BIN 产物。
 - 面向 64 KB Flash / 20 KB RAM 的 GNU 链接脚本。
 - VS Code 构建任务、C/C++ IntelliSense 及 Cortex-Debug/OpenOCD 调试配置。
@@ -150,8 +151,10 @@ make debug-server
 **应用结构**(`Core/Src/main.c` 与 `device/led/led.c`):
 
 - `led_task`(优先级 1,位于 `device/led/led.c`):通过 `Driver_IO` 每 500 ms 翻转 PC13
-- `heartbeat_task`(优先级 2):每秒自增 `heartbeat_count`(演示优先级抢占与共享 volatile 变量)
-- `main()`:HAL 初始化 → 时钟配置 → `LED_Init()` / `LED_Start()` → 创建心跳任务 → `vTaskStartScheduler()`
+- `heartbeat_task`(优先级 2,位于 `Core/Src/main.c`):每秒自增 `heartbeat_count` 并经调试串口打印,同时用 100 ms 超时阻塞读回显串口收到的字节(演示 DMA RX);栈为 256 字以容纳 `vsnprintf`
+- `main()`:HAL 初始化 → 时钟配置 → `LED_Init()` / `DebugUart_Init()` / `LED_Start()` → 创建心跳任务 → `vTaskStartScheduler()`
+
+**调试串口**(`device/debug_uart/`):USART1 通过 `printf` 或 `DebugUart_Printf()` 输出,多任务下日志行不会交错;接线与 API 详见 `device/debug_uart/README.md`。注意 DMA1 通道 4/5 已被 USART1 占用,SPI2/I2C2 无法再用 DMA。
 
 **新增外设时**:在 `FreeRTOSConfig.h` 中按需开启相关宏(如 `configUSE_TIMERS` 已启用),任务间同步用 `queue`/`semaphore`/`mutex`(内核源文件已在 Makefile 的 `FREERTOS_SOURCES` 中,无需改动)。
 

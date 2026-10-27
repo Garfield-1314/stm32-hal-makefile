@@ -8,7 +8,7 @@
 | PWM | `driver_pwm.h` | TIM1-TIM4 PWM 初始化、启停、千分比占空比设置 |
 | I2C | `driver_i2c.h` | 7 位地址主机模式、普通收发、寄存器读写 |
 | SPI | `driver_spi.h` | 8 位全双工主机模式、收发和同步全双工传输 |
-| UART | `driver_uart.h` | USART1-USART3 初始化、块收发和单字节收发 |
+| UART | `driver_uart.h` | USART1-USART3 初始化、阻塞收发、单字节收发,可选 DMA 附加(非阻塞发送、空闲定界接收) |
 
 驱动会开启对应外设时钟,但不会配置引脚复用、GPIO 重映射或 I2C/SPI 片选。调用方需要在初始化前完成板级 GPIO 配置。
 
@@ -22,6 +22,8 @@ Driver_IO_Init(&led, GPIOC, GPIO_PIN_13,
 Driver_IO_Write(&led, GPIO_PIN_SET);
 Driver_IO_Toggle(&led);
 ```
+
+模式可选 `DRIVER_IO_MODE_INPUT`、`DRIVER_IO_MODE_OUTPUT_PP`、`DRIVER_IO_MODE_OUTPUT_OD` 和 `DRIVER_IO_MODE_AF_PP`(复用推挽,如 UART TX)。F1 的 GPIO 复用配置不绑定具体外设,引脚通道选择仍由 AFIO 决定。
 
 ## PWM
 
@@ -105,3 +107,52 @@ Driver_UART_ReadByte(&uart, &received, 100U);
 所有传输接口的最后一个参数都是超时时间,单位为毫秒。在 FreeRTOS 任务中建议使用有限超时,避免总线异常时无限等待。
 
 I2C、SPI 和 UART 驱动对象不是线程安全的。多个任务共享同一外设时,应由调用方使用互斥量串行化访问。
+
+### UART DMA(可选)
+
+`Driver_UART_AttachDma` 为 UART 附加 DMA 通道(通道由调用方按 RM0008 表 27 选择,可只附一个方向)。驱动使能 DMA1 时钟并配置通道,但不设置 NVIC 优先级、不实现中断向量——这些留在板级代码。
+
+```c
+Driver_UART uart;
+/* ... Driver_UART_Init(&uart, &config); ... */
+
+/* USART1: TX = DMA1 通道 4,RX = DMA1 通道 5 */
+if (Driver_UART_AttachDma(&uart, DMA1_Channel4, DMA1_Channel5) != HAL_OK) { /* ... */ }
+
+/* 完成事件回调(ISR 上下文,由驱动内的 HAL 弱回调分发) */
+uart.tx_done = on_tx_done;          /* 一块发送完成 */
+uart.rx_event = on_rx_event;        /* 半满/全满/空闲事件 */
+uart.error = on_uart_error;         /* 接收错误(HAL 已中止 DMA) */
+
+/* 中断向量由板级实现,内部转发给 HAL */
+void DMA1_Channel4_IRQHandler(void) { Driver_UART_OnDmaTxIrq(&uart); }
+void DMA1_Channel5_IRQHandler(void) { Driver_UART_OnDmaRxIrq(&uart); }
+void USART1_IRQHandler(void)        { Driver_UART_OnUsartIrq(&uart); }
+
+/* 非阻塞发送一块(上一块未完成时返回 HAL_BUSY) */
+Driver_UART_Transmit_DMA(&uart, data, size);
+
+/* 循环模式 + 空闲线定界接收;在 rx_event 中用
+ * Driver_UART_DMA_RX_Remaining(&uart) 计算已写入字节数 */
+Driver_UART_ReceiveToIdle_DMA(&uart, buf, sizeof(buf));
+```
+
+注意:
+
+- F1 上 Normal 模式的 DMA 发送,其完成回调要经过 **USART 的 TC 中断**触发,因此 `USART1_IRQn` 必须使能,否则 `tx_done` 永远不会执行;
+- 接收错误(噪声/过载)时 HAL 会中止 DMA 并调用 `error` 回调,需要在回调中重新调用 `Driver_UART_ReceiveToIdle_DMA` 挂回;
+- 若中断里要调用 FreeRTOS `FromISR` API,NVIC 优先级数值必须 ≥ `configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY`(本工程为 5)。
+
+F103 DMA1 通道与外设固定映射,一个通道同一时间只能服务一个外设,选用时注意冲突。下表为与串行外设相关的节选(完整表见 RM0008 Table 27;不同容量型号的 USART3_RX 等个别条目有差异):
+
+| DMA1 通道 | 外设请求(节选) |
+| --- | --- |
+| 1 | ADC1、USART3_RX(中容量) |
+| 2 | SPI1_RX、USART3_TX、TIM1_CH1 |
+| 3 | SPI1_TX、USART3_RX(高容量)、TIM1_CH2 |
+| 4 | **USART1_TX**、SPI2_RX、I2C2_RX、TIM1_CH4 |
+| 5 | **USART1_RX**、SPI2_TX、I2C2_TX、TIM1_UP |
+| 6 | USART2_RX、I2C1_RX、TIM1_CH3 |
+| 7 | USART2_TX、I2C1_TX |
+
+本工程的调试串口(`device/debug_uart/`)占用通道 4/5,因此 SPI2/I2C2 的 DMA 不可再用(反之亦然);需要同时使用时应选择不冲突的组合,或为其中之一改用阻塞/中断模式。
