@@ -1,20 +1,12 @@
 #include "main.h"
+#include "led.h"
+#include "debug_uart.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
-/* LED task: toggles the PC13 LED every 500 ms. */
-static void led_task(void *argument)
-{
-    (void)argument;
-    for (;;)
-    {
-        HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-        vTaskDelay(pdMS_TO_TICKS(500U));
-    }
-}
-
-/* Heartbeat task: higher priority, increments a counter every second.
- * Demonstrates preemption of led_task and shared (volatile) state. */
+/* Heartbeat task: higher priority, increments a counter every second and
+ * logs it on the debug UART. Also echoes received bytes so the DMA RX path
+ * can be exercised from a serial terminal. */
 static volatile uint32_t heartbeat_count;
 
 static void heartbeat_task(void *argument)
@@ -23,6 +15,16 @@ static void heartbeat_task(void *argument)
     for (;;)
     {
         heartbeat_count++;
+        (void)DebugUart_Printf("heartbeat: %lu\n",
+                               (unsigned long)heartbeat_count);
+
+        uint8_t echo[16];
+        uint16_t received = DebugUart_Read(echo, sizeof(echo), 100U);
+        if (received > 0U)
+        {
+            (void)DebugUart_Write(echo, received);
+        }
+
         vTaskDelay(pdMS_TO_TICKS(1000U));
     }
 }
@@ -32,20 +34,15 @@ int main(void)
     HAL_Init();
     SystemClock_Config();
 
-    __HAL_RCC_GPIOC_CLK_ENABLE();
+    LED_Init();
+    DebugUart_Init();
+    LED_Start();
 
-    GPIO_InitTypeDef gpio = {0};
-    gpio.Pin = LED_Pin;
-    gpio.Mode = GPIO_MODE_OUTPUT_PP;
-    gpio.Pull = GPIO_NOPULL;
-    gpio.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(LED_GPIO_Port, &gpio);
+    (void)DebugUart_Printf("debug console up\n");
 
-    /* Many Blue Pill boards wire the PC13 LED active-low. */
-    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-
-    xTaskCreate(led_task, "led", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-    xTaskCreate(heartbeat_task, "beat", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+    /* 256 words (1 KB): newlib-nano vsnprintf needs more than the minimal
+     * stack, see device/debug_uart/README.md. */
+    xTaskCreate(heartbeat_task, "beat", 256, NULL, 2, NULL);
 
     vTaskStartScheduler();
 
